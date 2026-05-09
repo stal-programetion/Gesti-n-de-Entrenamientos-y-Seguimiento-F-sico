@@ -54,3 +54,25 @@ def registrar_entrenador(data):
     db.session.commit()
     
     return nuevo_entrenador.id, "Entrenador registrado exitosamente", 201
+
+def registrar_cliente(data):
+    data_requeridos = ['nombre', 'email', 'password']
+    if not all(field in data for field in data_requeridos):
+        return None, "Faltan campos requeridos: nombre, email, password", 400
+        
+    if Usuario.query.filter_by(email=data['email']).first():
+        return None, "El email ya está registrado", 400
+        
+    nuevo_cliente = Usuario(
+        nombre=data['nombre'],
+        email=data['email'],
+        password_hash=generate_password_hash(data['password']),
+        rol="Cliente",
+        estado_pago="al_dia",
+        activo=True
+    )
+    
+    db.session.add(nuevo_cliente)
+    db.session.commit()
+    
+    return nuevo_cliente.id, "Cliente registrado exitosamente", 201

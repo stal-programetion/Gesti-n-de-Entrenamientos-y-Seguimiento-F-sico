@@ -105,7 +105,7 @@ def modificar_rutina(rutina_id, data, entrenador_id):
         if not rutina:
             return None, "Rutina no encontrada", 404
         
-        if rutina.entrenador_id != entrenador_id:
+        if str(rutina.entrenador_id) != str(entrenador_id):
             return None, "Acceso no autorizado: solo el entrenador que creó la rutina puede modificarla", 403
 
         # Modificar el nombre de la rutina si se proporciona

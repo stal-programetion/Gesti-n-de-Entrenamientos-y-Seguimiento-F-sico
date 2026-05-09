@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import verify_jwt_in_request, get_jwt
 from functools import wraps
-from Logic.auth_logic import authenticar_usuario, registrar_entrenador
+from Logic.auth_logic import authenticar_usuario, registrar_entrenador, registrar_cliente
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -35,28 +35,15 @@ def register_entrenador_route():
     return jsonify({"msg": msg, "entrenador_id": entrenador_id}), status_code
 
 @auth_bp.route('/register/cliente', methods=['POST'])
-def register_cliente():
-    data= request.get_json()
+def register_cliente_route():
+    data = request.get_json()
     
-    data_requeridos = ['nombre', 'email', 'password']
-    if not all(field in data for field in data_requeridos):
-        return jsonify({"msg": "Faltan campos requeridos: nombre, email, password"}), 400
-        
-    if Usuario.query.filter_by(email=data['email']).first():
-        return jsonify({"msg": "El email ya está registrado"}), 400
-        
-    nuevo_cliente = Usuario(
-        nombre=data['nombre'],
-        email=data['email'],
-        password_hash=generate_password_hash(data['password']),
-        rol="Cliente",
-        estado_pago="al_dia",
-        activo=True
-    )
+    cliente_id, msg, status_code = registrar_cliente(data)
     
-    db.session.add(nuevo_cliente)
-    db.session.commit() 
-    return jsonify({"msg": "Cliente registrado exitosamente", "cliente_id": nuevo_cliente.id}), 201
+    if status_code != 201:
+        return jsonify({"msg": msg}), status_code
+        
+    return jsonify({"msg": msg, "cliente_id": cliente_id}), status_code
 
 
 
