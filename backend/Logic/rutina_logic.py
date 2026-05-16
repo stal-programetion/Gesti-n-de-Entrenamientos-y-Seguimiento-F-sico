@@ -1,29 +1,59 @@
-from models.models import Rutina, Ejercicio, Usuario
+from models.models import Rutina, Ejercicio, SerieObjetivo, Usuario
 from models.database import db
+
+def _build_series_objetivo(ejercicio_id, series_data):
+    """
+    Crea objetos SerieObjetivo a partir del array de series enviado por el entrenador.
+    series_data: [{ repeticiones_objetivo, peso_objetivo_kg? }, ...]  (ordenado por índice = numero_serie)
+    """
+    objetos = []
+    for i, s in enumerate(series_data, start=1):
+        if 'repeticiones_objetivo' not in s:
+            raise ValueError(f"La serie {i} debe incluir 'repeticiones_objetivo'")
+        objetos.append(SerieObjetivo(
+            ejercicio_id=ejercicio_id,
+            numero_serie=i,
+            repeticiones_objetivo=int(s['repeticiones_objetivo']),
+            peso_objetivo_kg=s.get('peso_objetivo_kg')
+        ))
+    return objetos
+
 
 def crear_rutina_con_ejercicios(data, entrenador_id):
     """
-    Lógica para crear una Rutina y sus ejercicios asociados (RF02).
-    Asegura que esto pase dentro de una sola transacción de BD.
+    RF02 — Crea una Rutina con sus ejercicios y los objetivos por serie.
+
+    Payload esperado:
+    {
+      "nombre": "Tren Superior",
+      "cliente_id": 5,
+      "ejercicios": [
+        {
+          "nombre": "Press Banca",
+          "series": [
+            { "repeticiones_objetivo": 12, "peso_objetivo_kg": 80 },
+            { "repeticiones_objetivo": 10, "peso_objetivo_kg": 85 },
+            { "repeticiones_objetivo": 8,  "peso_objetivo_kg": 90 }
+          ]
+        }
+      ]
+    }
     """
     try:
         nombre_rutina = data.get('nombre')
         cliente_id = data.get('cliente_id')
         ejercicios_data = data.get('ejercicios', [])
 
-        # Validaciones iniciales
         if not nombre_rutina or not cliente_id:
             return None, "Faltan datos de la rutina (nombre y cliente_id son obligatorios)", 400
 
         if not ejercicios_data or not isinstance(ejercicios_data, list) or len(ejercicios_data) == 0:
             return None, "Debe proporcionar una lista con al menos un ejercicio", 400
 
-        # Validar que el cliente exista y que efectivamente sea un Cliente
         cliente = Usuario.query.get(cliente_id)
         if not cliente or cliente.rol.value != "Cliente":
             return None, "El cliente_id proporcionado no es válido o no corresponde a un rol Cliente", 404
 
-        # 1. Instanciar y guardar la nueva Rutina
         nueva_rutina = Rutina(
             nombre=nombre_rutina,
             entrenador_id=entrenador_id,
@@ -31,55 +61,64 @@ def crear_rutina_con_ejercicios(data, entrenador_id):
             activa=True
         )
         db.session.add(nueva_rutina)
-        
-        # Hacemos un flush para que la BD asigne un ID a nueva_rutina sin cerrar la transacción
         db.session.flush()
 
-        # 2. Instanciar los Ejercicios e iterar sobre los provistos por el entrenador
         for ej_data in ejercicios_data:
-            campos_requeridos = ['nombre', 'series', 'repeticiones']
-            if not all(k in ej_data for k in campos_requeridos):
+            if 'nombre' not in ej_data or 'series' not in ej_data:
                 db.session.rollback()
-                return None, "Cada ejercicio debe contener obligatoriamente: nombre, series, y repeticiones", 400
-                
+                return None, "Cada ejercicio debe contener 'nombre' y 'series' (array de series)", 400
+
+            series_list = ej_data['series']
+            if not isinstance(series_list, list) or len(series_list) == 0:
+                db.session.rollback()
+                return None, "El campo 'series' de cada ejercicio debe ser un array con al menos un elemento", 400
+
             nuevo_ejercicio = Ejercicio(
                 rutina_id=nueva_rutina.id,
                 nombre=ej_data['nombre'],
-                series=int(ej_data['series']),
-                repeticiones=int(ej_data['repeticiones']),
-                peso_objetivo_kg=ej_data.get('peso_objetivo_kg')  # Este es opcional (puede ser None)
+                series=len(series_list),
             )
             db.session.add(nuevo_ejercicio)
+            db.session.flush()
 
-        # 3. Guardar todo definitivamente
+            for obj in _build_series_objetivo(nuevo_ejercicio.id, series_list):
+                db.session.add(obj)
+
         db.session.commit()
         return nueva_rutina.id, "Rutina y ejercicios creados exitosamente", 201
 
-    except ValueError:
+    except ValueError as ve:
         db.session.rollback()
-        return None, "Error de formato: las series y repeticiones deben ser numéricas", 400
+        return None, str(ve), 400
     except Exception as e:
         db.session.rollback()
         return None, f"Error interno del servidor: {str(e)}", 500
-    
+
+
 def obtener_rutina_con_ejercicios(rutina_id):
-    """
-    Lógica para obtener una Rutina junto con sus ejercicios asociados (RF03).
-    Devuelve un diccionario con la información de la rutina y una lista de ejercicios.
-    """
+    """RF03 — Obtiene una Rutina con sus ejercicios y los objetivos de cada serie."""
     try:
         rutina = Rutina.query.get(rutina_id)
         if not rutina:
             return None, "Rutina no encontrada", 404
 
         ejercicios = Ejercicio.query.filter_by(rutina_id=rutina_id).all()
-        ejercicios_list = [{
-            "id": ej.id,
-            "nombre": ej.nombre,
-            "series": ej.series,
-            "repeticiones": ej.repeticiones,
-            "peso_objetivo_kg": float(ej.peso_objetivo_kg) if ej.peso_objetivo_kg is not None else None
-        } for ej in ejercicios]
+        ejercicios_list = []
+        for ej in ejercicios:
+            series_obj = SerieObjetivo.query.filter_by(ejercicio_id=ej.id).order_by(SerieObjetivo.numero_serie).all()
+            ejercicios_list.append({
+                "id": ej.id,
+                "nombre": ej.nombre,
+                "series": ej.series,
+                "series_objetivo": [
+                    {
+                        "numero_serie": s.numero_serie,
+                        "repeticiones_objetivo": s.repeticiones_objetivo,
+                        "peso_objetivo_kg": float(s.peso_objetivo_kg) if s.peso_objetivo_kg is not None else None
+                    }
+                    for s in series_obj
+                ]
+            })
 
         rutina_data = {
             "id": rutina.id,
@@ -93,73 +132,68 @@ def obtener_rutina_con_ejercicios(rutina_id):
 
     except Exception as e:
         return None, f"Error interno del servidor: {str(e)}", 500
-    
+
+
 def modificar_rutina(rutina_id, data, entrenador_id):
-    """
-    Lógica para modificar una Rutina existente (RF04).
-    Permite cambiar el nombre de la rutina y/o sus ejercicios.
-    Solo el entrenador que creó la rutina puede modificarla.
-    """
+    """RF04 — Modifica una Rutina existente. Solo el entrenador creador puede hacerlo."""
     try:
         rutina = Rutina.query.get(rutina_id)
         if not rutina:
             return None, "Rutina no encontrada", 404
-        
+
         if str(rutina.entrenador_id) != str(entrenador_id):
             return None, "Acceso no autorizado: solo el entrenador que creó la rutina puede modificarla", 403
 
-        # Modificar el nombre de la rutina si se proporciona
         nuevo_nombre = data.get('nombre')
         if nuevo_nombre:
             rutina.nombre = nuevo_nombre
 
-        # Modificar los ejercicios si se proporciona una lista de ejercicios
         ejercicios_data = data.get('ejercicios')
         if ejercicios_data is not None:
-            # Eliminar los ejercicios existentes
             Ejercicio.query.filter_by(rutina_id=rutina_id).delete()
-            db.session.flush()  # Asegura que los cambios se reflejen antes de agregar nuevos ejercicios
+            db.session.flush()
 
-            # Agregar los nuevos ejercicios
             for ej_data in ejercicios_data:
-                campos_requeridos = ['nombre', 'series', 'repeticiones']
-                if not all(k in ej_data for k in campos_requeridos):
+                if 'nombre' not in ej_data or 'series' not in ej_data:
                     db.session.rollback()
-                    return None, "Cada ejercicio debe contener obligatoriamente: nombre, series, y repeticiones", 400
-                    
+                    return None, "Cada ejercicio debe contener 'nombre' y 'series' (array de series)", 400
+
+                series_list = ej_data['series']
+                if not isinstance(series_list, list) or len(series_list) == 0:
+                    db.session.rollback()
+                    return None, "El campo 'series' de cada ejercicio debe ser un array con al menos un elemento", 400
+
                 nuevo_ejercicio = Ejercicio(
                     rutina_id=rutina.id,
                     nombre=ej_data['nombre'],
-                    series=int(ej_data['series']),
-                    repeticiones=int(ej_data['repeticiones']),
-                    peso_objetivo_kg=ej_data.get('peso_objetivo_kg')  # Este es opcional (puede ser None)
+                    series=len(series_list),
                 )
                 db.session.add(nuevo_ejercicio)
+                db.session.flush()
+
+                for obj in _build_series_objetivo(nuevo_ejercicio.id, series_list):
+                    db.session.add(obj)
 
         db.session.commit()
         return rutina.id, "Rutina modificada exitosamente", 200
 
-    except ValueError:
+    except ValueError as ve:
         db.session.rollback()
-        return None, "Error de formato: las series y repeticiones deben ser numéricas", 400
+        return None, str(ve), 400
     except Exception as e:
         db.session.rollback()
         return None, f"Error interno del servidor: {str(e)}", 500
-    
+
+
 def listar_rutinas_por_usuario(usuario_id, rol):
-    """
-    Lista las rutinas basándose en el rol.
-    Si es Cliente, ve las rutinas donde él es el cliente.
-    Si es Entrenador, ve las rutinas donde él es el creador.
-    """
+    """Lista las rutinas según el rol del usuario."""
     try:
         if rol == "Cliente":
             rutinas = Rutina.query.filter_by(cliente_id=usuario_id, activa=True).all()
         elif rol == "Entrenador":
             rutinas = Rutina.query.filter_by(entrenador_id=usuario_id).all()
         else:
-             # Administradores pueden ver todas
-             rutinas = Rutina.query.all()
+            rutinas = Rutina.query.all()
 
         lista_rutinas = [{
             "id": r.id,
@@ -174,22 +208,19 @@ def listar_rutinas_por_usuario(usuario_id, rol):
     except Exception as e:
         return None, f"Error interno del servidor: {str(e)}", 500
 
+
 def eliminar_rutina(rutina_id, entrenador_id):
-    """
-    Lógica para desactivar/borrar lógicamente una Rutina.
-    """
+    """Soft-delete de una Rutina."""
     try:
         rutina = Rutina.query.get(rutina_id)
         if not rutina:
             return None, "Rutina no encontrada", 404
-        
+
         if rutina.entrenador_id != entrenador_id:
             return None, "Acceso no autorizado: solo el entrenador que creó la rutina puede eliminarla", 403
 
-        # Desactivado lógico (soft delete) recomendable para no perder histórico
         rutina.activa = False
         db.session.commit()
-        
         return rutina.id, "Rutina eliminada (desactivada) exitosamente", 200
 
     except Exception as e:

@@ -23,10 +23,9 @@ class Usuario(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     rol = db.Column(db.Enum(RolUsuario), nullable=False)
-    estado_pago = db.Column(db.Enum(EstadoPago), nullable=True) # Principalmente para clientes
+    estado_pago = db.Column(db.Enum(EstadoPago), nullable=True)
     activo = db.Column(db.Boolean, default=True)
 
-    # Relaciones (Foreign keys target)
     rutinas_creadas = db.relationship('Rutina', foreign_keys='Rutina.entrenador_id', backref='entrenador', lazy=True)
     rutinas_asignadas = db.relationship('Rutina', foreign_keys='Rutina.cliente_id', backref='cliente', lazy=True)
     sesiones = db.relationship('Sesion', backref='cliente', lazy=True)
@@ -42,7 +41,6 @@ class Rutina(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     activa = db.Column(db.Boolean, default=True)
 
-    # Relaciones
     ejercicios = db.relationship('Ejercicio', backref='rutina', lazy=True, cascade="all, delete-orphan")
     sesiones = db.relationship('Sesion', backref='rutina_diaria', lazy=True)
 
@@ -52,11 +50,25 @@ class Ejercicio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     rutina_id = db.Column(db.Integer, db.ForeignKey('rutinas.id'), nullable=False)
     nombre = db.Column(db.String(150), nullable=False)
+    # 'series' sigue siendo el total de series del ejercicio (derivado del array de series_objetivo)
     series = db.Column(db.Integer, nullable=False)
-    repeticiones = db.Column(db.Integer, nullable=False)
-    peso_objetivo_kg = db.Column(db.Numeric(5, 2), nullable=True)
 
+    # Cada fila = objetivo de una serie específica definida por el entrenador
+    series_objetivo = db.relationship('SerieObjetivo', backref='ejercicio', lazy=True, cascade="all, delete-orphan")
     registros = db.relationship('RegistroDesempeno', backref='ejercicio', lazy=True, cascade="all, delete-orphan")
+
+class SerieObjetivo(db.Model):
+    """
+    Define el objetivo del entrenador para cada serie individual de un ejercicio.
+    Ej: Serie 1 → 12 reps a 80 kg, Serie 2 → 10 reps a 90 kg.
+    """
+    __tablename__ = 'series_objetivo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    ejercicio_id = db.Column(db.Integer, db.ForeignKey('ejercicios.id'), nullable=False)
+    numero_serie = db.Column(db.Integer, nullable=False)          # 1, 2, 3...
+    repeticiones_objetivo = db.Column(db.Integer, nullable=False)
+    peso_objetivo_kg = db.Column(db.Numeric(5, 2), nullable=True) # Opcional
 
 class Sesion(db.Model):
     __tablename__ = 'sesiones'
@@ -70,13 +82,18 @@ class Sesion(db.Model):
     registros = db.relationship('RegistroDesempeno', backref='sesion', lazy=True, cascade="all, delete-orphan")
 
 class RegistroDesempeno(db.Model):
+    """
+    Registra el desempeño REAL del cliente en cada serie individual de cada ejercicio.
+    Ej: Serie 1 de Sentadilla → 11 reps reales a 82.5 kg.
+    """
     __tablename__ = 'registros_desempeno'
     
     id = db.Column(db.Integer, primary_key=True)
     sesion_id = db.Column(db.Integer, db.ForeignKey('sesiones.id'), nullable=False)
     ejercicio_id = db.Column(db.Integer, db.ForeignKey('ejercicios.id'), nullable=False)
-    peso_real_kg = db.Column(db.Numeric(5, 2), nullable=False)
-    series_hechas = db.Column(db.Integer, nullable=False)
+    numero_serie = db.Column(db.Integer, nullable=False)          # 1, 2, 3...
+    repeticiones_hechas = db.Column(db.Integer, nullable=False)   # Reps reales
+    peso_real_kg = db.Column(db.Numeric(5, 2), nullable=False)    # Peso real usado
 
 class FotoProgreso(db.Model):
     __tablename__ = 'fotos_progreso'
