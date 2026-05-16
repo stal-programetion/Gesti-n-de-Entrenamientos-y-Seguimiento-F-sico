@@ -1,5 +1,6 @@
 from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 
 # Importaciones locales (modulares)
 from config import Config
@@ -7,11 +8,17 @@ from models.database import db
 from routes.auth_routes import auth_bp
 from routes.rutina_routes import rutina_bp
 from routes.desempeno_routes import desempeno_bp
+from routes.pago_routes import pago_bp
+from routes.calorico_routes import calorico_bp
+from routes.fotografia_routes import fotografia_bp
 
 def create_app(config_class=Config):
     
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # Configuración de CORS vital para que React se conecte
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
     # Inicializar las extensiones con la app
     db.init_app(app)
@@ -21,9 +28,9 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(rutina_bp, url_prefix='/api/rutinas')
     app.register_blueprint(desempeno_bp, url_prefix='/api/desempeno')
-
-    # Endpoint base / healthcheck
-    @app.route('/health', methods=['GET'])
+    app.register_blueprint(pago_bp, url_prefix='/api/pagos')
+    app.register_blueprint(calorico_bp, url_prefix='/api/calorico')
+    app.register_blueprint(fotografia_bp, url_prefix='/api/fotografia')
     def health_check():
         return jsonify({
             "status": "success", 

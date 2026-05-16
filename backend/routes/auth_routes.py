@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import verify_jwt_in_request, get_jwt
 from functools import wraps
-from Logic.auth_logic import authenticar_usuario, registrar_entrenador, registrar_cliente
+from Logic.auth_logic import authenticar_usuario, registrar_admin, registrar_entrenador, registrar_cliente, obtener_lista_clientes, actualizar_acceso_usuario
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -45,7 +45,42 @@ def register_cliente_route():
         
     return jsonify({"msg": msg, "cliente_id": cliente_id}), status_code
 
+@auth_bp.route('/register/admin', methods=['POST'])
+def register_admin_route():
+    data = request.get_json()
 
+    admin_id, msg, status_code = registrar_admin(data)
+
+    if status_code != 201:
+        return jsonify({"msg": msg}), status_code
+
+    return jsonify({"msg": msg, "admin_id": admin_id}), status_code
+
+@auth_bp.route('/clientes', methods=['GET'])
+def get_clientes_route():
+    include_inactive = request.args.get('include_inactive', '0') == '1'
+    data, msg, status_code = obtener_lista_clientes(include_inactive=include_inactive)
+    if status_code != 200:
+        return jsonify({"msg": msg}), status_code
+    return jsonify({"data": data}), status_code
+
+@auth_bp.route('/usuarios/<int:usuario_id>/acceso', methods=['PATCH'])
+def toggle_usuario_acceso_route(usuario_id):
+    verify_jwt_in_request()
+    claims = get_jwt()
+
+    if claims.get("rol") != "Administrador":
+        return jsonify({"msg": "Acceso denegado. Solo administradores pueden modificar el acceso"}), 403
+
+    data = request.get_json() or {}
+    if 'activo' not in data:
+        return jsonify({"msg": "El campo 'activo' es obligatorio"}), 400
+
+    usuario_data, msg, status_code = actualizar_acceso_usuario(usuario_id, data.get('activo'))
+    if status_code != 200:
+        return jsonify({"msg": msg}), status_code
+
+    return jsonify({"msg": msg, "usuario": usuario_data}), status_code
 
 def require_active_payment():
     def wrapper(fn):

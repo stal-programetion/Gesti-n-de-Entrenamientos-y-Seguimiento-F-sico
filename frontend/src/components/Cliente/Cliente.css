@@ -1,0 +1,210 @@
+/* src/components/Cliente/Cliente.css */
+
+.cliente-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  
+  .cliente-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+  
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #f3f4f6;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #4b5563;
+    font-weight: 500;
+  }
+  
+  /* Tarjetas Mis Rutinas */
+  .rutina-cliente-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    margin-bottom: 15px;
+  }
+  
+  .card-content h3 { margin: 0 0 5px 0; font-size: 1.2rem; }
+  .status-badge { display: inline-block; background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;}
+  
+  .btn-iniciar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .btn-iniciar:disabled { background: #9ca3af; cursor: not-allowed; }
+  
+  /* SESION EN VIVO (Móvil First) */
+  .sesion-container {
+    max-width: 500px; /* Estrecho para simular app móvil */
+    margin: 0 auto;
+    min-height: 100vh;
+    background: #f9fafb;
+    padding: 20px;
+    font-family: system-ui, sans-serif;
+  }
+  
+  .sesion-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+  }
+  
+  .back-btn-ghost { background: none; border: none; cursor: pointer; color: #6b7280; padding: 5px; }
+  .header-info h2 { margin: 0; font-size: 1.1rem; }
+  .progress-text { color: #6b7280; font-size: 0.85rem; }
+  
+  .ejercicio-en-vivo {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .ejercicio-meta h1 { margin: 0 0 15px 0; font-size: 1.8rem; text-align: center; color: #111827; }
+  .meta-pills { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+  .pill { background: #f3f4f6; padding: 6px 12px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; color: #374151; }
+  .pill.obj { background: #e0e7ff; color: #4338ca; }
+  
+  /* Controles grandes para dedos sudorosos */
+  .registro-inputs h3 { text-align: center; margin-bottom: 20px; color: #4b5563; }
+  
+  .input-group-large { margin-bottom: 25px; }
+  .input-group-large label { display: block; text-align: center; margin-bottom: 8px; font-weight: 600; color: #374151; }
+  
+  .number-stepper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .number-stepper button {
+    width: 50px;
+    height: 50px;
+    border-radius: 25px;
+    border: none;
+    background: #e5e7eb;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #374151;
+    cursor: pointer;
+  }
+  
+  .number-stepper input {
+    width: 80px;
+    height: 50px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+  }
+  
+  .sesion-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 40px;
+  }
+  
+  .btn-secundario {
+    flex: 1;
+    padding: 15px;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+    color: #4b5563;
+    cursor: pointer;
+  }
+  
+  .btn-primario-grande {
+    flex: 2;
+    padding: 15px;
+    background: #2563eb;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+    color: white;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+  
+  .btn-exito-grande {
+    flex: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 15px;
+    background: #10b981;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+    color: white;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+  
+  .input-estandar {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    box-sizing: border-box;
+  }
+  
+  /* HISTORIAL */
+  .sesion-history-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .sesion-date-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #2563eb;
+    font-weight: bold;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #eff6ff;
+    padding-bottom: 10px;
+  }
+  
+  .historial-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  
+  .historial-table th { text-align: left; padding: 8px; color: #6b7280; font-size: 0.85rem; text-transform: uppercase; border-bottom: 1px solid #e5e7eb;}
+  .historial-table td { padding: 12px 8px; border-bottom: 1px solid #f3f4f6; color: #111827; }
